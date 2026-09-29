@@ -1440,6 +1440,10 @@ static int h264_field_start(H264Context *h, const H264SliceContext *sl,
             unwrap_prev_frame_num = (h->poc.frame_num - sps->ref_frame_count) - 1;
             if (unwrap_prev_frame_num < 0)
                 unwrap_prev_frame_num += max_frame_num;
+            /* The skipped part of the gap contains the frame_num wrap:
+             * account for it in FrameNumOffset, as a decoded picture would. */
+            else if (h->poc.prev_frame_num > h->poc.frame_num)
+                h->poc.prev_frame_num_offset += max_frame_num;
 
             h->poc.prev_frame_num = unwrap_prev_frame_num;
         }
@@ -1516,6 +1520,8 @@ static int h264_field_start(H264Context *h, const H264SliceContext *sl,
             return ret;
         }
 
+        if (h->poc.prev_frame_num == (1 << sps->log2_max_frame_num) - 1)
+            h->poc.prev_frame_num_offset += 1 << sps->log2_max_frame_num;
         h->poc.prev_frame_num++;
         h->poc.prev_frame_num        %= 1 << sps->log2_max_frame_num;
         h->cur_pic_ptr->frame_num = h->poc.prev_frame_num;
